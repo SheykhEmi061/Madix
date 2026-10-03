@@ -10,6 +10,8 @@
   const repoRows = [...document.querySelectorAll('#repoRows tr')];
   const emptyState = document.querySelector('#emptyState');
   const visibleCount = document.querySelector('#visibleCount');
+  const settingsSaved = document.querySelector('#settingsSaved');
+  const settingSwitches = [...document.querySelectorAll('[data-setting]')];
   let toastTimer;
 
   function showToast(message) {
@@ -82,12 +84,78 @@
     backdrop.classList.toggle('visible', open);
     menuToggle.setAttribute('aria-expanded', String(open));
     menuToggle.setAttribute('aria-label', open ? 'بستن منو' : 'باز کردن منو');
+    sidebar.inert = window.matchMedia('(max-width: 900px)').matches && !open;
     document.body.classList.toggle('sidebar-open', open);
   }
 
+  setSidebar(false);
   menuToggle.addEventListener('click', () => setSidebar(!sidebar.classList.contains('open')));
   backdrop.addEventListener('click', () => setSidebar(false));
+  window.matchMedia('(max-width: 900px)').addEventListener('change', () => setSidebar(false));
   sidebar.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setSidebar(false)));
+
+  const settingDefaults = { mfa: true, criticalAlerts: true, dailyScan: true };
+  const settingsKey = 'madix-dashboard-settings-v1';
+  let savedSettings = {};
+  try {
+    savedSettings = JSON.parse(window.localStorage.getItem(settingsKey) || '{}') || {};
+  } catch {
+    settingsSaved.textContent = 'ذخیره محلی در این مرورگر در دسترس نیست';
+  }
+
+  settingSwitches.forEach((control) => {
+    const key = control.dataset.setting;
+    const enabled = typeof savedSettings[key] === 'boolean' ? savedSettings[key] : settingDefaults[key];
+    control.setAttribute('aria-checked', String(enabled));
+    control.addEventListener('click', () => {
+      const nextValue = control.getAttribute('aria-checked') !== 'true';
+      control.setAttribute('aria-checked', String(nextValue));
+      savedSettings[key] = nextValue;
+      try {
+        window.localStorage.setItem(settingsKey, JSON.stringify(savedSettings));
+        settingsSaved.textContent = 'تغییرات ذخیره شد';
+      } catch {
+        settingsSaved.textContent = 'تغییر فقط برای این نشست اعمال شد';
+      }
+      showToast(nextValue ? 'این سیاست امنیتی فعال شد.' : 'این سیاست امنیتی غیرفعال شد.');
+    });
+  });
+
+  document.querySelector('.notification-button').addEventListener('click', () => {
+    showToast('۲ اعلان امنیتی برای بررسی دارید.');
+  });
+  document.querySelectorAll('.more-button').forEach((button) => {
+    button.addEventListener('click', () => showToast('اطلاعات این بخش در نمای فعلی به‌روز است.'));
+  });
+  document.querySelectorAll('.row-more').forEach((button) => {
+    button.addEventListener('click', () => {
+      const repository = button.closest('tr').querySelector('.repo-name strong').textContent;
+      showToast(`جزئیات مخزن ${repository} در فهرست امنیتی نمایش داده شده است.`);
+    });
+  });
+  document.querySelector('.profile-button').addEventListener('click', () => {
+    showToast('حساب کاربری سارا احمدی در این نمای داشبورد نمایش داده شده است.');
+  });
+
+  const navLinks = [...document.querySelectorAll('.nav-item[href^="#"]')];
+  const navSections = navLinks
+    .map((link) => document.querySelector(link.getAttribute('href')))
+    .filter(Boolean);
+  if ('IntersectionObserver' in window) {
+    const sectionObserver = new IntersectionObserver((entries) => {
+      const current = entries.filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!current) return;
+      navLinks.forEach((link) => {
+        const active = link.hash === `#${current.target.id}`;
+        link.classList.toggle('active', active);
+        if (active) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+      });
+    }, { rootMargin: '-20% 0px -65% 0px', threshold: [0, 0.1, 0.5] });
+    navSections.forEach((section) => sectionObserver.observe(section));
+  }
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') setSidebar(false);
   });
