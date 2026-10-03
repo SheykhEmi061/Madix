@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "madix-telegram-bot",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-03",
+  "workers_dev": true,
+  "vars": {
+    "GITHUB_OWNER": "SheykhEmi061",
+    "GITHUB_REPO": "Madix"
+  }
+}
